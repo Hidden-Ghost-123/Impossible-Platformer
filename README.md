@@ -8,7 +8,7 @@ I started the project by setting up the basic Pygame environment. The first goal
 
 I then created a basic game loop which keeps the program running until the player closes the window. At this stage there are no graphics, characters or levels. The project currently only displays a blank screen.
 
-Problems Encountered
+Problems Encountered :
 
 No major issues were encountered during this stage. The main focus was confirming that Pygame was installed correctly and that the game window could be opened and closed safely.
 
@@ -30,15 +30,15 @@ No major issues were encountered during this stage. The main focus was confirmin
 
 After successfully creating the game window, I focused on improving the structure of the program. A frame rate limit was added using pygame.time.Clock() to ensure the game runs consistently on different computers.
 
-I created constants for the screen width, screen height, and FPS rather than hard-coding values throughout the program. This will make future changes easier.
+I created constants for the screen width, screen height, and FPS rather than hard coding values throughout the program. This will make future changes easier.
 
-I also replaced the plain black screen with a temporary sky-blue background. This makes the project feel more like a game environment and provides a better foundation for testing future features.
+I also replaced the plain black screen with a temporary sky blue background. This makes the project feel more like a game environment and provides a better foundation for testing future features.
 
 Although no player has been added yet, the game loop is now stable and organised enough to begin implementing movement systems.
 
 Problems Encountered
 
-Initially the game was running as fast as the computer would allow, causing unnecessary CPU usage. Adding FPS control fixed this issue and ensures consistent performance.
+Initially the game was running as fast as the computer would allow, causing unnecessary CPU usage. Adding fps control fixed this issue and ensures consistent performance.
 
 ### Testing Performed
 - Verified the game window opens correctly.
