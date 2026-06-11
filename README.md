@@ -17,3 +17,41 @@ No major issues were encountered during this stage. The main focus was confirmin
 
 
 ---
+
+# Devlog 2 : 25 - 120 mins
+
+### Objectives
+- Add FPS control
+- Create project constants
+- Improve game loop structure
+- Add a background colour
+- Prepare the codebase for future player development
+- Progress
+
+After successfully creating the game window, I focused on improving the structure of the program. A frame rate limit was added using pygame.time.Clock() to ensure the game runs consistently on different computers.
+
+I created constants for the screen width, screen height, and FPS rather than hard-coding values throughout the program. This will make future changes easier.
+
+I also replaced the plain black screen with a temporary sky-blue background. This makes the project feel more like a game environment and provides a better foundation for testing future features.
+
+Although no player has been added yet, the game loop is now stable and organised enough to begin implementing movement systems.
+
+Problems Encountered
+
+Initially the game was running as fast as the computer would allow, causing unnecessary CPU usage. Adding FPS control fixed this issue and ensures consistent performance.
+
+### Testing Performed
+- Verified the game window opens correctly.
+- Verified the frame rate remains stable at 60 FPS.
+- Confirmed the window closes without errors.
+- Next Steps
+- Create the player object.
+- Draw the player on screen.
+- Begin implementing horizontal movement using keyboard controls.
+
+### Next Steps
+- Create the player object.
+- Draw the player on screen.
+- Begin implementing horizontal movement using keyboard controls.
+
+---
