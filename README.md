@@ -13,7 +13,7 @@ Problems Encountered
 No major issues were encountered during this stage. The main focus was confirming that Pygame was installed correctly and that the game window could be opened and closed safely.
 
 
-![I've tried it. Trust me]()
+![DEVLOG 1](https://github.com/Hidden-Ghost-123/Impossible-Platformer/blob/main/Screenshot%202026-06-10%20203328.png)
 
 
 ---
