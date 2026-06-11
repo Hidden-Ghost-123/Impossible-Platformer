@@ -54,4 +54,6 @@ Initially the game was running as fast as the computer would allow, causing unne
 - Draw the player on screen.
 - Begin implementing horizontal movement using keyboard controls.
 
+![DEVLOG 2](https://github.com/Hidden-Ghost-123/Impossible-Platformer/blob/main/Screenshot%202026-06-11%20111049.png)
+
 ---
