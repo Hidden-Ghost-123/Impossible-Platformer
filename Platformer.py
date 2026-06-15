@@ -1,6 +1,3 @@
-# Impossible Platformer Game
-# Nishchay Bhudia
-
 import pygame
 
 pygame.init()
@@ -41,21 +38,53 @@ class Player:
     def apply_gravity(self):
         self.y_vel += GRAVITY
 
-    def update(self):
-        self.apply_gravity()
-        self.move()
+    def update(self, blocks):
 
-        # floor collision (temporary)
-        if self.rect.bottom >= HEIGHT:
-            self.rect.bottom = HEIGHT
-            self.y_vel = 0
-            self.on_ground = True
+        self.apply_gravity()
+
+        # horizontal movement
+        self.rect.x += self.x_vel
+
+        # check horizontal collisions
+        for block in blocks:
+            if self.rect.colliderect(block):
+                if self.x_vel > 0:
+                    self.rect.right = block.left
+                elif self.x_vel < 0:
+                    self.rect.left = block.right
+
+        # vertical movement
+        self.rect.y += self.y_vel
+
+        self.on_ground = False
+
+        # check vertical collisions
+        for block in blocks:
+            if self.rect.colliderect(block):
+                if self.y_vel > 0:
+                    self.rect.bottom = block.top
+                    self.y_vel = 0
+                    self.on_ground = True
+
+                elif self.y_vel < 0:
+                    self.rect.top = block.bottom
+                    self.y_vel = 0
 
     def draw(self, win):
         pygame.draw.rect(win, self.color, self.rect)
 
 
+# player
 player = Player(100, 100, 50, 50)
+
+# platforms
+blocks = [
+    pygame.Rect(0, HEIGHT - 50, WIDTH, 50),   # floor
+    pygame.Rect(200, 600, 200, 20),
+    pygame.Rect(500, 450, 200, 20),
+    pygame.Rect(800, 350, 150, 20)
+]
+
 
 run = True
 
@@ -81,9 +110,13 @@ while run:
     if keys[pygame.K_RIGHT]:
         player.x_vel = PLAYER_VEL
 
-    player.update()
+    player.update(blocks)
 
     window.fill((64, 224, 208))
+
+    # draw blocks
+    for block in blocks:
+        pygame.draw.rect(window, (0, 0, 0), block)
 
     player.draw(window)
 
