@@ -3,44 +3,60 @@
 
 import pygame
 
-# initialise pygame
 pygame.init()
 
-# display settings
 WIDTH = 1000
 HEIGHT = 800
 FPS = 60
 
 PLAYER_VEL = 5
+GRAVITY = 1
 
-# create window
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Impossible Game")
 
 clock = pygame.time.Clock()
 
 
-# player Class
 class Player:
 
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
+
         self.color = (255, 0, 0)
 
-    def move_left(self, vel):
-        self.rect.x -= vel
+        self.x_vel = 0
+        self.y_vel = 0
 
-    def move_right(self, vel):
-        self.rect.x += vel
+        self.on_ground = False
+
+    def jump(self):
+        self.y_vel = -15
+        self.on_ground = False
+
+    def move(self):
+        self.rect.x += self.x_vel
+        self.rect.y += self.y_vel
+
+    def apply_gravity(self):
+        self.y_vel += GRAVITY
+
+    def update(self):
+        self.apply_gravity()
+        self.move()
+
+        # floor collision (temporary)
+        if self.rect.bottom >= HEIGHT:
+            self.rect.bottom = HEIGHT
+            self.y_vel = 0
+            self.on_ground = True
 
     def draw(self, win):
         pygame.draw.rect(win, self.color, self.rect)
 
 
-# create the player
 player = Player(100, 100, 50, 50)
 
-# main loop
 run = True
 
 while run:
@@ -51,18 +67,24 @@ while run:
         if event.type == pygame.QUIT:
             run = False
 
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and player.on_ground:
+                player.jump()
+
     keys = pygame.key.get_pressed()
 
+    player.x_vel = 0
+
     if keys[pygame.K_LEFT]:
-        player.move_left(PLAYER_VEL)
+        player.x_vel = -PLAYER_VEL
 
     if keys[pygame.K_RIGHT]:
-        player.move_right(PLAYER_VEL)
+        player.x_vel = PLAYER_VEL
 
-    # draw background
+    player.update()
+
     window.fill((64, 224, 208))
 
-    # draw player
     player.draw(window)
 
     pygame.display.update()
