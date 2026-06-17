@@ -6,7 +6,7 @@ from os.path import isfile
 pygame.init()
 
 WIDTH = 1000
-HEIGHT = 700
+HEIGHT = 600
 FPS = 60
 
 PLAYER_VEL = 5
@@ -23,33 +23,25 @@ def flip(sprites):
 
 
 def load_sprite_sheets(dir1, dir2, width, height, direction=False):
-
     path = join("assets", dir1, dir2)
     images = [f for f in listdir(path) if isfile(join(path, f))]
 
     all_sprites = {}
 
     for image in images:
-
         sprite_sheet = pygame.image.load(join(path, image)).convert_alpha()
 
         sprites = []
 
         for i in range(sprite_sheet.get_width() // width):
-
             surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
-
             rect = pygame.Rect(i * width, 0, width, height)
-
             surface.blit(sprite_sheet, (0, 0), rect)
-
             sprites.append(pygame.transform.scale2x(surface))
 
         if direction:
-
             all_sprites[image.replace(".png", "") + "_right"] = sprites
             all_sprites[image.replace(".png", "") + "_left"] = flip(sprites)
-
         else:
             all_sprites[image.replace(".png", "")] = sprites
 
@@ -71,15 +63,11 @@ class Player:
 
         self.animation_count = 0
 
-        self.fall_count = 0
-
         self.SPRITES = load_sprite_sheets(
             "MainCharacters", "VirtualGuy", 32, 32, True
         )
 
         self.sprite = self.SPRITES["idle_left"][0]
-
-        self.mask = None
 
         self.on_ground = False
 
@@ -87,22 +75,14 @@ class Player:
         self.y_vel = -15
         self.on_ground = False
 
-    def move(self, dx, dy):
-        self.rect.x += dx
-        self.rect.y += dy
-
     def move_left(self, vel):
-
         self.x_vel = -vel
-
         if self.direction != "left":
             self.direction = "left"
             self.animation_count = 0
 
     def move_right(self, vel):
-
         self.x_vel = vel
-
         if self.direction != "right":
             self.direction = "right"
             self.animation_count = 0
@@ -113,10 +93,8 @@ class Player:
 
         if self.y_vel < 0:
             sprite_sheet = "jump"
-
         elif self.y_vel > GRAVITY * 2:
             sprite_sheet = "fall"
-
         elif self.x_vel != 0:
             sprite_sheet = "run"
 
@@ -124,11 +102,9 @@ class Player:
 
         sprites = self.SPRITES[sprite_sheet_name]
 
-        sprite_index = (
-            self.animation_count // self.ANIMATION_DELAY
-        ) % len(sprites)
+        index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
 
-        self.sprite = sprites[sprite_index]
+        self.sprite = sprites[index]
 
         self.animation_count += 1
 
@@ -139,12 +115,9 @@ class Player:
         self.rect.x += self.x_vel
 
         for block in blocks:
-
             if self.rect.colliderect(block):
-
                 if self.x_vel > 0:
                     self.rect.right = block.left
-
                 elif self.x_vel < 0:
                     self.rect.left = block.right
 
@@ -153,31 +126,34 @@ class Player:
         self.on_ground = False
 
         for block in blocks:
-
             if self.rect.colliderect(block):
-
                 if self.y_vel > 0:
                     self.rect.bottom = block.top
                     self.y_vel = 0
                     self.on_ground = True
-
                 elif self.y_vel < 0:
                     self.rect.top = block.bottom
                     self.y_vel = 0
 
         self.update_sprite()
 
-    def draw(self, win):
-        win.blit(self.sprite, self.rect)
+    def draw(self, win, offset_x):
+        win.blit(self.sprite, (self.rect.x - offset_x, self.rect.y))
+
 
 
 player = Player(100, 100, 50, 50)
 
 blocks = [
-    pygame.Rect(0, HEIGHT - 50, WIDTH, 50),
-    pygame.Rect(200, 600, 200, 20),
-    pygame.Rect(500, 450, 200, 20)
+    pygame.Rect(0, HEIGHT - 50, 2000, 50),
+    pygame.Rect(300, 600, 200, 20),
+    pygame.Rect(700, 500, 200, 20),
+    pygame.Rect(1100, 450, 200, 20),
+    pygame.Rect(1500, 400, 200, 20)
 ]
+
+offset_x = 0
+scroll_area_width = 200
 
 run = True
 
@@ -191,7 +167,6 @@ while run:
             run = False
 
         if event.type == pygame.KEYDOWN:
-
             if event.key == pygame.K_SPACE and player.on_ground:
                 player.jump()
 
@@ -207,12 +182,20 @@ while run:
 
     player.update(blocks)
 
+
+    if ((player.rect.right - offset_x >= WIDTH - scroll_area_width and player.x_vel > 0) or
+        (player.rect.left - offset_x <= scroll_area_width and player.x_vel < 0)):
+
+        offset_x += player.x_vel
+
+
     window.fill((64, 224, 208))
 
     for block in blocks:
-        pygame.draw.rect(window, (0, 0, 0), block)
+        pygame.draw.rect(window, (0, 0, 0),
+                         pygame.Rect(block.x - offset_x, block.y, block.width, block.height))
 
-    player.draw(window)
+    player.draw(window, offset_x)
 
     pygame.display.update()
 
