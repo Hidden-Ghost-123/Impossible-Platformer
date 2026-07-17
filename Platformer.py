@@ -17,6 +17,8 @@ from os import listdir
 from os.path import isfile, join
 
 #Initialising Pygame
+#smaller buffer = less audio latency/stutter, set before init so it actually takes
+pygame.mixer.pre_init(44100, -16, 2, 512)
 pygame.init()
 pygame.mixer.init()
 
@@ -52,7 +54,7 @@ def play_sound(sound_name):
 pygame.display.set_caption("Impossible Game")
 
 #Basic Variables
-WIDTH, HEIGHT = 800, 640
+WIDTH, HEIGHT = 1000, 800
 FPS = 60
 PLAYER_VEL = 5
 death_count = 0
@@ -443,20 +445,20 @@ def character_select_screen(window, label, controls):
         window.fill((30, 30, 45))
 
         title = title_font.render(label, True, (255, 255, 255))
-        window.blit(title, (WIDTH // 2 - title.get_width() // 2, 30))
+        window.blit(title, (WIDTH // 2 - title.get_width() // 2, 70))
 
         preview = CHARACTER_SPRITES[name]["idle_right"][0]
         preview = pygame.transform.scale(preview, (preview.get_width() * 2, preview.get_height() * 2))
-        window.blit(preview, (WIDTH // 2 - preview.get_width() // 2, 105))
+        window.blit(preview, (WIDTH // 2 - preview.get_width() // 2, 240))
 
         arrow_font = FONTS[60]
         left_arrow = arrow_font.render("<", True, (255, 255, 255))
         right_arrow = arrow_font.render(">", True, (255, 255, 255))
-        window.blit(left_arrow, (WIDTH // 2 - 230, 150))
-        window.blit(right_arrow, (WIDTH // 2 + 200, 150))
+        window.blit(left_arrow, (WIDTH // 2 - 230, 290))
+        window.blit(right_arrow, (WIDTH // 2 + 200, 290))
 
         name_text = name_font.render(name, True, (255, 220, 100))
-        window.blit(name_text, (WIDTH // 2 - name_text.get_width() // 2, 245))
+        window.blit(name_text, (WIDTH // 2 - name_text.get_width() // 2, 420))
 
         ability_title, ability_detail = CHARACTER_ABILITIES[name]
         ability_detail = ability_detail.format(
@@ -466,18 +468,18 @@ def character_select_screen(window, label, controls):
         )
 
         title_text = desc_font.render(ability_title, True, (255, 200, 80))
-        window.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 285))
+        window.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 465))
 
         for i, line in enumerate(ability_detail.split("\n")):
             line_text = detail_font.render(line, True, (215, 215, 215))
-            window.blit(line_text, (WIDTH // 2 - line_text.get_width() // 2, 317 + i * 24))
+            window.blit(line_text, (WIDTH // 2 - line_text.get_width() // 2, 500 + i * 24))
 
         triple_jump_hint = hint_font.render(
             "Everyone can triple jump - tap jump up to 3 times in the air", True, (150, 200, 255))
-        window.blit(triple_jump_hint, (WIDTH // 2 - triple_jump_hint.get_width() // 2, 365))
+        window.blit(triple_jump_hint, (WIDTH // 2 - triple_jump_hint.get_width() // 2, 560))
 
         hint = hint_font.render("Left/Right to browse, Enter to pick", True, (150, 150, 150))
-        window.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT - 50))
+        window.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT - 80))
         pygame.display.update()
 
 #controls for each player
@@ -1265,9 +1267,9 @@ def update_player(player, objects, enemies, spiked_balls, fans, rockheads):
 
     #checking every block in the whole level for collision every frame was the
     #other big slowdown on the web build - levels are thousands of pixels long
-    #but the screen is only 800 wide, so only bother with stuff near the player
+    #but the screen is only 1000 wide, so only bother with stuff near the player
     px = player.rect.centerx
-    nearby = [o for o in objects if abs(o.rect.centerx - px) < 550]
+    nearby = [o for o in objects if abs(o.rect.centerx - px) < 700]
 
     if player.ground_pounding:
         player.x_vel = 0
@@ -1453,7 +1455,7 @@ def build_level1():
     #gaps in it, which meant there was no way to jump over it. pulled a few spikes
     #out (2441, 2651, 2861, 3071) so it's a run of jumpable 2-spike clusters instead
     spike_positions = [
-        (600, -64), (500, -64), (700, -64), (800, -64), (600, -450),
+        (600, -64), (500, -64), (700, -64), (800, -64), (600, -544),
         (400, -352), (900, -64), (1100, -64), (1250, -64), (1940, -160),
         (2120, -350), (2301, -64), (2371, -64), (2511, -64), (2581, -64),
         (2721, -64), (2791, -64), (2931, -64), (3001, -64), (3141, -64), (3211, -64),
@@ -1477,16 +1479,18 @@ def build_level1():
         AIEnemy(6300, HEIGHT - block_size - 64, 70, 64, patrol_range=100, aggro_range=500, speed=4),
     ]
 
-    checkpoint_positions = [(1400, -168), (3500, -168), (6500, -168)]
+    checkpoint_positions = [(1400, -168), (3500, -168), (6500, -550)]
     checkpoints = [Checkpoint(x, HEIGHT - block_size + y_offset, 200, 200) for x, y_offset in checkpoint_positions]
 
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 8) // block_size)]
 
-    #the screen is shorter now (640 instead of 800), so the safe max height before
-    #stuff starts poking off the top of the screen is lower too - capped at 5
+    #(-1,8) and (-1,9) used to be here too - that made the wall next to the spawn
+    #point go up to almost -100, way above the top of the screen. camera doesn't
+    #follow vertically now so anything above about height 7 just isn't visible
     platform_positions = [
-        (0, 2), (4, 4), (3, 4), (-1, 3), (-1, 4), (-1, 5), (-1, 2), (6, 5), (5, 5),
+        (0, 2), (4, 4), (3, 4), (-1, 3), (-1, 4), (-1, 5), (-1, 6),
+        (-1, 7), (-1, 2), (6, 6), (5, 6), (5, 5),
         (20, 2), (21, 2), (22, 2), (23, 2), (23, 5), (21, 3), (22, 3),
         (23, 3), (23, 4), (22, 4), (40, 2), (41, 3), (42, 2)
     ]
@@ -1496,16 +1500,16 @@ def build_level1():
     long_platform.extend([Block(65 * block_size, HEIGHT - block_size * 3, block_size),
                            Block(66 * block_size, HEIGHT - block_size * 3, block_size)])
 
-    #these used to climb all the way up to 11.75 blocks - capped at 5 to match the
-    #shorter screen
-    pillar_heights = [3, 4, 5]
+    #these used to climb all the way up to 11.75 blocks, which is over 1100px up -
+    #completely off the top of the screen with no vertical camera follow. capped at 7
+    pillar_heights = [5, 6, 7]
     pillars = []
     for h in pillar_heights:
         pillars.append(Block(48 * block_size, HEIGHT - block_size * h, block_size))
         pillars.append(Block(57 * block_size, HEIGHT - block_size * h, block_size))
     pillars.extend([
         Block(68 * block_size, HEIGHT - block_size * 5, block_size),
-        Block(58 * block_size, HEIGHT - block_size * 5, block_size)
+        Block(58 * block_size, HEIGHT - block_size * 7, block_size)
     ])
 
     small_block = Block(block_size * 6, HEIGHT - block_size * 3, small_block_size)
@@ -1534,13 +1538,13 @@ def build_level2():
     #at x=100 and those hazards are ~64px wide once you count their real sprite size,
     #so the level was starting with the player already standing on top of a spike
     #with zero time to react. pushed the opening hazards back to give a proper runway.
-    fire_positions = [(700, -64), (900, -350), (2200, -64), (2230, -64), (5000, -450)]
+    fire_positions = [(700, -64), (900, -350), (2200, -64), (2230, -64), (5000, -600)]
     fires = [Fire(x, HEIGHT - block_size + y_offset, 16, 32) for x, y_offset in fire_positions]
     for fire in fires:
         fire.on()
 
     #saws are really 76px tall (38 doubled), -64 was sinking them 12px into the ground
-    saw_positions = [(600, -200), (1800, -194), (1830, -194), (3600, -76), (3630, -76), (4800, -450)]
+    saw_positions = [(600, -200), (1800, -450), (1830, -450), (3600, -76), (3630, -76), (4800, -700)]
     saws = [Saw(x, HEIGHT - block_size + y_offset, 38, 38) for x, y_offset in saw_positions]
     for saw in saws:
         saw.on()
@@ -1560,15 +1564,16 @@ def build_level2():
     trampoline_positions = [(850, -56), (2900, -100), (4100, -100)]
     trampolines = [Trampoline(x, HEIGHT - block_size + y_offset, 28, 28) for x, y_offset in trampoline_positions]
 
-    #the screen is shorter now (640 instead of 800), so the stairs/ledge are capped
-    #at height 5 instead of 7 to stay comfortably on screen
+    #the stairs used to climb up to height 8 (and the flat ledge sat at height 8 too),
+    #which is right at the top of the screen - since the camera doesn't scroll
+    #vertically you couldn't see yourself up there at all. capped everything at 7
     pillars = []
-    for i, h in enumerate([2, 3, 4, 5]):
+    for i, h in enumerate([2, 3, 4, 5, 6, 7]):
         pillars.append(Block((10 + i) * block_size, HEIGHT - block_size * h, block_size))
-    for i, h in enumerate([5, 4, 3, 2]):
-        pillars.append(Block((26 + i) * block_size, HEIGHT - block_size * h, block_size))
+    for i, h in enumerate([7, 6, 5, 4, 3, 2]):
+        pillars.append(Block((28 + i) * block_size, HEIGHT - block_size * h, block_size))
 
-    high_ledge = [Block(i * block_size, HEIGHT - block_size * 5, block_size) for i in range(14, 26)]
+    high_ledge = [Block(i * block_size, HEIGHT - block_size * 7, block_size) for i in range(16, 28)]
 
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 6) // block_size)]
@@ -1576,17 +1581,18 @@ def build_level2():
     checkpoint_positions = [(1500, -168), (4300, -168)]
     checkpoints = [Checkpoint(x, HEIGHT - block_size + y_offset, 200, 200) for x, y_offset in checkpoint_positions]
 
-    #coins along the stairs/ledge redone to match the height-5 cap above
+    #coins along the stairs/ledge redone to match the height-7 cap above (they used
+    #to go up to height 9, which is now higher than the stairs even reach)
     coins = [Coin(x, y) for x, y in [
-        (1080, HEIGHT - block_size * 3), (1280, HEIGHT - block_size * 5),
-        (1500, HEIGHT - block_size * 5), (1950, HEIGHT - block_size * 5),
-        (2400, HEIGHT - block_size * 5), (2650, HEIGHT - block_size * 4),
-        (2850, HEIGHT - block_size * 3), (4450, HEIGHT - block_size - 120),
+        (1000, HEIGHT - block_size * 3), (1200, HEIGHT - block_size * 5),
+        (1450, HEIGHT - block_size * 7), (2000, HEIGHT - block_size * 7),
+        (2550, HEIGHT - block_size * 7), (2850, HEIGHT - block_size * 5),
+        (3100, HEIGHT - block_size * 3), (4450, HEIGHT - block_size - 120),
         (5000, HEIGHT - block_size - 120)
     ]]
 
     enemies = [
-        AIEnemy(1900, HEIGHT - block_size * 5 - 64, 70, 64, patrol_range=300, aggro_range=250, speed=3),
+        AIEnemy(1900, HEIGHT - block_size * 7 - 64, 70, 64, patrol_range=300, aggro_range=250, speed=3),
         AIEnemy(2300, HEIGHT - block_size - 64, 70, 64, patrol_range=150, aggro_range=400, speed=4),
         AIEnemy(3800, HEIGHT - block_size - 64, 70, 64, patrol_range=180, aggro_range=450, speed=4),
         AIEnemy(5100, HEIGHT - block_size - 64, 70, 64, patrol_range=120, aggro_range=500, speed=4.5),
@@ -1683,13 +1689,14 @@ def build_level5():
     ]
     objects.extend(rockheads)
 
-    #re-simulated this against the shorter screen (floor moved from y=704 to y=544
-    #when the viewport shrank, so the old chain length would have hung the ball
-    #below the floor). still gives a real ~24 frame (0.4s) safe window every 1.3s
+    #simulated the actual jump-across-the-gap frame by frame against the ball's swing:
+    #these numbers give a real ~24 frame (0.4s) safe window every 1.3s where the ball
+    #is out of the way, so it's always beatable if you watch and time it, but it's
+    #actually in the way (y~584-600, right in a normal jump's path) the rest of the time
     spiked_balls = [
-        SpikedBall(12 * block_size, 100, chain_length=340, amplitude=0.3, speed=0.08, phase=0.0),
-        SpikedBall(43 * block_size, 100, chain_length=340, amplitude=0.3, speed=0.08, phase=2.0),
-        SpikedBall(79 * block_size, 100, chain_length=340, amplitude=0.3, speed=0.08, phase=4.0),
+        SpikedBall(12 * block_size, 100, chain_length=500, amplitude=0.25, speed=0.08, phase=0.0),
+        SpikedBall(43 * block_size, 100, chain_length=500, amplitude=0.25, speed=0.08, phase=2.0),
+        SpikedBall(79 * block_size, 100, chain_length=500, amplitude=0.25, speed=0.08, phase=4.0),
     ]
 
     boss = AIEnemy(111 * block_size, floor_top - 84, 90, 84,
@@ -1804,7 +1811,7 @@ def main(window):
             player_xs = [p.rect.centerx for p in players]
             for obj in objects:
                 if isinstance(obj, (Fire, Saw, Trampoline, Fan, RockHead)):
-                    if any(abs(obj.rect.centerx - x) < 550 for x in player_xs):
+                    if any(abs(obj.rect.centerx - x) < 700 for x in player_xs):
                         obj.loop()
             for ball in spiked_balls:
                 ball.loop()
