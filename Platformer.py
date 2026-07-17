@@ -1,9 +1,5 @@
 #Impossible Platformer Game - FINAL VERSION
 #Nishchay Bhudia
-#Original: 08/10/2024 - 21/01/2025
-#Update: added character select (4 characters, all different abilities), 2 player mode,
-#new traps (fan, rock head, spiked ball), 2 more levels, coins, camera now scrolls up/down too
-#Computer Science
 
 #Imports
 import time

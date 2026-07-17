@@ -216,6 +216,3 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-
-# local login data, don't want test accounts/passwords in the repo
-users.csv
