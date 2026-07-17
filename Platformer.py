@@ -22,23 +22,27 @@ pygame.mixer.init()
 
 #sound effects
 def load_sounds():
+    #background music used to be loaded with mixer.Sound, which decodes the
+    #WHOLE track into memory up front - it's a few minutes long so that was a
+    #genuinely huge one-off decode, and probably part of why the music lagged.
+    #mixer.music streams it instead, which is what it's actually meant for
     sounds = {
-        'background': pygame.mixer.Sound('assets/Sound Effects/background.mp3'),
         'die': pygame.mixer.Sound('assets/Sound Effects/die.mp3'),
         'checkpoint': pygame.mixer.Sound('assets/Sound Effects/checkpoint.mp3'),
         'start': pygame.mixer.Sound('assets/Sound Effects/start.mp3'),
         'coin': pygame.mixer.Sound('assets/Sound Effects/item pick up.mp3'),
     }
-    sounds['background'].set_volume(0.2)
     return sounds
 
 game_sounds = load_sounds()
+pygame.mixer.music.load('assets/Sound Effects/background.mp3')
+pygame.mixer.music.set_volume(0.2)
 
 def play_background_music():
-    game_sounds['background'].play(-1)
+    pygame.mixer.music.play(-1)
 
 def stop_background_music():
-    game_sounds['background'].stop()
+    pygame.mixer.music.stop()
 
 def play_sound(sound_name):
     if sound_name in game_sounds:
@@ -48,7 +52,7 @@ def play_sound(sound_name):
 pygame.display.set_caption("Impossible Game")
 
 #Basic Variables
-WIDTH, HEIGHT = 1000, 800
+WIDTH, HEIGHT = 800, 640
 FPS = 60
 PLAYER_VEL = 5
 death_count = 0
@@ -59,6 +63,12 @@ small_block_size = 48
 
 #Pygame Window Setup
 window = pygame.display.set_mode((WIDTH, HEIGHT))
+
+#every menu screen and the HUD used to build a brand new Font object every
+#single frame just to render the same text again - loading/creating a font is
+#way more expensive than reusing one, so just build each size once up front
+pygame.font.init()
+FONTS = {size: pygame.font.Font(None, size) for size in (24, 26, 30, 32, 36, 38, 40, 42, 46, 50, 60, 64, 74)}
 
 #particle system, just used for jump dust/dash trail/coin sparkle/hit effect
 #making a new tiny surface for every particle every frame was one of the big
@@ -149,8 +159,8 @@ screen_shake = ScreenShake()
 def draw_loading_screen(window):
     window.fill((64, 224, 208))
     pygame.font.init()
-    font = pygame.font.Font(None, 74)
-    small_font = pygame.font.Font(None, 50)
+    font = FONTS[74]
+    small_font = FONTS[50]
 
     title_text = font.render("Impossible Game", True, (255, 255, 255))
     instruction_text = small_font.render("Press Any Key to Start", True, (255, 255, 255))
@@ -175,7 +185,7 @@ def flip(sprites):
 
 #Menu and Pause game (Esc key)
 def show_menu(window, player):
-    menu_font = pygame.font.Font(None, 36)
+    menu_font = FONTS[36]
     menu_options = ["Resume", "Reset Character", "Reset Game"]
     selected_option = 0
 
@@ -210,8 +220,8 @@ def show_menu(window, player):
 #Sign Up and Log in system
 def draw_auth_screen(window, mode):
     window.fill((255, 182, 193))
-    font = pygame.font.Font(None, 74)
-    small_font = pygame.font.Font(None, 50)
+    font = FONTS[74]
+    small_font = FONTS[50]
 
     title_text = font.render(f"{'Sign Up' if mode == 'signup' else 'Log In'}", True, (255, 255, 255))
     window.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, HEIGHT // 4))
@@ -243,7 +253,7 @@ def get_input(prompt):
                     input_text += event.unicode
 
         pygame.draw.rect(window, (255, 255, 255), input_rect)
-        text_surface = pygame.font.Font(None, 32).render(input_text, True, (0, 0, 0))
+        text_surface = FONTS[32].render(input_text, True, (0, 0, 0))
         window.blit(text_surface, (input_rect.x + 5, input_rect.y + 5))
         pygame.display.flip()
 
@@ -268,8 +278,8 @@ def authenticate_user(mode):
 def auth_menu():
     while True:
         window.fill((64, 224, 208))
-        font = pygame.font.Font(None, 74)
-        small_font = pygame.font.Font(None, 50)
+        font = FONTS[74]
+        small_font = FONTS[50]
 
         title_text = font.render("Login/Sign up", True, (255, 255, 255))
         window.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, HEIGHT // 4))
@@ -305,9 +315,9 @@ auth_menu()
 def mode_select_screen(window):
     options = ["1 Player", "2 Player"]
     selected = 0
-    title_font = pygame.font.Font(None, 64)
-    option_font = pygame.font.Font(None, 42)
-    hint_font = pygame.font.Font(None, 26)
+    title_font = FONTS[64]
+    option_font = FONTS[42]
+    hint_font = FONTS[26]
 
     while True:
         for event in pygame.event.get():
@@ -410,11 +420,11 @@ SPIKEHEAD_BLINK = load_anim("Spike Head", "Blink (54x52).png", 54, 52)
 #character pick screen, used for player 1 and (if 2 player mode) player 2
 def character_select_screen(window, label, controls):
     idx = 0
-    title_font = pygame.font.Font(None, 50)
-    name_font = pygame.font.Font(None, 46)
-    desc_font = pygame.font.Font(None, 30)
-    detail_font = pygame.font.Font(None, 24)
-    hint_font = pygame.font.Font(None, 24)
+    title_font = FONTS[50]
+    name_font = FONTS[46]
+    desc_font = FONTS[30]
+    detail_font = FONTS[24]
+    hint_font = FONTS[24]
 
     while True:
         for event in pygame.event.get():
@@ -433,20 +443,20 @@ def character_select_screen(window, label, controls):
         window.fill((30, 30, 45))
 
         title = title_font.render(label, True, (255, 255, 255))
-        window.blit(title, (WIDTH // 2 - title.get_width() // 2, 70))
+        window.blit(title, (WIDTH // 2 - title.get_width() // 2, 30))
 
         preview = CHARACTER_SPRITES[name]["idle_right"][0]
         preview = pygame.transform.scale(preview, (preview.get_width() * 2, preview.get_height() * 2))
-        window.blit(preview, (WIDTH // 2 - preview.get_width() // 2, 240))
+        window.blit(preview, (WIDTH // 2 - preview.get_width() // 2, 105))
 
-        arrow_font = pygame.font.Font(None, 60)
+        arrow_font = FONTS[60]
         left_arrow = arrow_font.render("<", True, (255, 255, 255))
         right_arrow = arrow_font.render(">", True, (255, 255, 255))
-        window.blit(left_arrow, (WIDTH // 2 - 230, 290))
-        window.blit(right_arrow, (WIDTH // 2 + 200, 290))
+        window.blit(left_arrow, (WIDTH // 2 - 230, 150))
+        window.blit(right_arrow, (WIDTH // 2 + 200, 150))
 
         name_text = name_font.render(name, True, (255, 220, 100))
-        window.blit(name_text, (WIDTH // 2 - name_text.get_width() // 2, 420))
+        window.blit(name_text, (WIDTH // 2 - name_text.get_width() // 2, 245))
 
         ability_title, ability_detail = CHARACTER_ABILITIES[name]
         ability_detail = ability_detail.format(
@@ -456,18 +466,18 @@ def character_select_screen(window, label, controls):
         )
 
         title_text = desc_font.render(ability_title, True, (255, 200, 80))
-        window.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 465))
+        window.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 285))
 
         for i, line in enumerate(ability_detail.split("\n")):
             line_text = detail_font.render(line, True, (215, 215, 215))
-            window.blit(line_text, (WIDTH // 2 - line_text.get_width() // 2, 500 + i * 24))
+            window.blit(line_text, (WIDTH // 2 - line_text.get_width() // 2, 317 + i * 24))
 
         triple_jump_hint = hint_font.render(
             "Everyone can triple jump - tap jump up to 3 times in the air", True, (150, 200, 255))
-        window.blit(triple_jump_hint, (WIDTH // 2 - triple_jump_hint.get_width() // 2, 560))
+        window.blit(triple_jump_hint, (WIDTH // 2 - triple_jump_hint.get_width() // 2, 365))
 
         hint = hint_font.render("Left/Right to browse, Enter to pick", True, (150, 150, 150))
-        window.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT - 80))
+        window.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT - 50))
         pygame.display.update()
 
 #controls for each player
@@ -1134,28 +1144,56 @@ def get_background(name):
             tiles.append(pos)
     return tiles, image
 
+#the HUD used to re-render all its text every single frame even though the
+#level/coin count/death count usually don't change frame to frame - only
+#re-render whichever piece actually changed
+_hud_cache = {}
+
 def draw_hud(window, level_num, coins_this_level, coins_needed, total_coins, deaths, two_player):
-    font = pygame.font.Font(None, 32)
-    level_text = font.render(f"Level {level_num}", True, (255, 255, 255))
-    coin_text = font.render(f"Coins: {coins_this_level}/{total_coins}  (need {coins_needed})", True, (255, 215, 0))
-    death_text = font.render(f"Deaths: {deaths}", True, (255, 130, 130))
-    window.blit(level_text, (20, 15))
-    window.blit(coin_text, (20, 45))
-    window.blit(death_text, (20, 75))
+    font = FONTS[32]
+
+    if _hud_cache.get("level") != level_num:
+        _hud_cache["level"] = level_num
+        _hud_cache["level_surf"] = font.render(f"Level {level_num}", True, (255, 255, 255))
+
+    coin_key = (coins_this_level, total_coins, coins_needed)
+    if _hud_cache.get("coin_key") != coin_key:
+        _hud_cache["coin_key"] = coin_key
+        _hud_cache["coin_surf"] = font.render(
+            f"Coins: {coins_this_level}/{total_coins}  (need {coins_needed})", True, (255, 215, 0))
+
+    if _hud_cache.get("deaths") != deaths:
+        _hud_cache["deaths"] = deaths
+        _hud_cache["deaths_surf"] = font.render(f"Deaths: {deaths}", True, (255, 130, 130))
+
+    window.blit(_hud_cache["level_surf"], (20, 15))
+    window.blit(_hud_cache["coin_surf"], (20, 45))
+    window.blit(_hud_cache["deaths_surf"], (20, 75))
+
     if two_player:
-        mode_text = font.render("2 Player Mode", True, (180, 220, 255))
-        window.blit(mode_text, (WIDTH - mode_text.get_width() - 20, 20))
+        if "mode_surf" not in _hud_cache:
+            _hud_cache["mode_surf"] = font.render("2 Player Mode", True, (180, 220, 255))
+        mode_surf = _hud_cache["mode_surf"]
+        window.blit(mode_surf, (WIDTH - mode_surf.get_width() - 20, 20))
+
+_banner_cache = {}
 
 def draw_message_banner(window, text):
-    font = pygame.font.Font(None, 38)
-    text_surf = font.render(text, True, (255, 255, 255))
-    box_w = text_surf.get_width() + 50
-    box_h = text_surf.get_height() + 26
-    box = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-    box.fill((0, 0, 0, 190))
-    pygame.draw.rect(box, (255, 210, 60), (0, 0, box_w, box_h), 3)
-    window.blit(box, (WIDTH // 2 - box_w // 2, 90))
-    window.blit(text_surf, (WIDTH // 2 - text_surf.get_width() // 2, 90 + 13))
+    if _banner_cache.get("text") != text:
+        font = FONTS[38]
+        text_surf = font.render(text, True, (255, 255, 255))
+        box_w = text_surf.get_width() + 50
+        box_h = text_surf.get_height() + 26
+        box = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        box.fill((0, 0, 0, 190))
+        pygame.draw.rect(box, (255, 210, 60), (0, 0, box_w, box_h), 3)
+        _banner_cache["text"] = text
+        _banner_cache["text_surf"] = text_surf
+        _banner_cache["box"] = box
+        _banner_cache["box_w"] = box_w
+
+    window.blit(_banner_cache["box"], (WIDTH // 2 - _banner_cache["box_w"] // 2, 90))
+    window.blit(_banner_cache["text_surf"], (WIDTH // 2 - _banner_cache["text_surf"].get_width() // 2, 90 + 13))
 
 #Background Drawing
 def draw(window, background, bg_image, players, objects, coins, enemies, spiked_balls,
@@ -1227,9 +1265,9 @@ def update_player(player, objects, enemies, spiked_balls, fans, rockheads):
 
     #checking every block in the whole level for collision every frame was the
     #other big slowdown on the web build - levels are thousands of pixels long
-    #but the screen is only 1000 wide, so only bother with stuff near the player
+    #but the screen is only 800 wide, so only bother with stuff near the player
     px = player.rect.centerx
-    nearby = [o for o in objects if abs(o.rect.centerx - px) < 700]
+    nearby = [o for o in objects if abs(o.rect.centerx - px) < 550]
 
     if player.ground_pounding:
         player.x_vel = 0
@@ -1415,7 +1453,7 @@ def build_level1():
     #gaps in it, which meant there was no way to jump over it. pulled a few spikes
     #out (2441, 2651, 2861, 3071) so it's a run of jumpable 2-spike clusters instead
     spike_positions = [
-        (600, -64), (500, -64), (700, -64), (800, -64), (600, -544),
+        (600, -64), (500, -64), (700, -64), (800, -64), (600, -450),
         (400, -352), (900, -64), (1100, -64), (1250, -64), (1940, -160),
         (2120, -350), (2301, -64), (2371, -64), (2511, -64), (2581, -64),
         (2721, -64), (2791, -64), (2931, -64), (3001, -64), (3141, -64), (3211, -64),
@@ -1439,18 +1477,16 @@ def build_level1():
         AIEnemy(6300, HEIGHT - block_size - 64, 70, 64, patrol_range=100, aggro_range=500, speed=4),
     ]
 
-    checkpoint_positions = [(1400, -168), (3500, -168), (6500, -550)]
+    checkpoint_positions = [(1400, -168), (3500, -168), (6500, -168)]
     checkpoints = [Checkpoint(x, HEIGHT - block_size + y_offset, 200, 200) for x, y_offset in checkpoint_positions]
 
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 8) // block_size)]
 
-    #(-1,8) and (-1,9) used to be here too - that made the wall next to the spawn
-    #point go up to almost -100, way above the top of the screen. camera doesn't
-    #follow vertically now so anything above about height 7 just isn't visible
+    #the screen is shorter now (640 instead of 800), so the safe max height before
+    #stuff starts poking off the top of the screen is lower too - capped at 5
     platform_positions = [
-        (0, 2), (4, 4), (3, 4), (-1, 3), (-1, 4), (-1, 5), (-1, 6),
-        (-1, 7), (-1, 2), (6, 6), (5, 6), (5, 5),
+        (0, 2), (4, 4), (3, 4), (-1, 3), (-1, 4), (-1, 5), (-1, 2), (6, 5), (5, 5),
         (20, 2), (21, 2), (22, 2), (23, 2), (23, 5), (21, 3), (22, 3),
         (23, 3), (23, 4), (22, 4), (40, 2), (41, 3), (42, 2)
     ]
@@ -1460,16 +1496,16 @@ def build_level1():
     long_platform.extend([Block(65 * block_size, HEIGHT - block_size * 3, block_size),
                            Block(66 * block_size, HEIGHT - block_size * 3, block_size)])
 
-    #these used to climb all the way up to 11.75 blocks, which is over 1100px up -
-    #completely off the top of the screen with no vertical camera follow. capped at 7
-    pillar_heights = [5, 6, 7]
+    #these used to climb all the way up to 11.75 blocks - capped at 5 to match the
+    #shorter screen
+    pillar_heights = [3, 4, 5]
     pillars = []
     for h in pillar_heights:
         pillars.append(Block(48 * block_size, HEIGHT - block_size * h, block_size))
         pillars.append(Block(57 * block_size, HEIGHT - block_size * h, block_size))
     pillars.extend([
         Block(68 * block_size, HEIGHT - block_size * 5, block_size),
-        Block(58 * block_size, HEIGHT - block_size * 7, block_size)
+        Block(58 * block_size, HEIGHT - block_size * 5, block_size)
     ])
 
     small_block = Block(block_size * 6, HEIGHT - block_size * 3, small_block_size)
@@ -1498,13 +1534,13 @@ def build_level2():
     #at x=100 and those hazards are ~64px wide once you count their real sprite size,
     #so the level was starting with the player already standing on top of a spike
     #with zero time to react. pushed the opening hazards back to give a proper runway.
-    fire_positions = [(700, -64), (900, -350), (2200, -64), (2230, -64), (5000, -600)]
+    fire_positions = [(700, -64), (900, -350), (2200, -64), (2230, -64), (5000, -450)]
     fires = [Fire(x, HEIGHT - block_size + y_offset, 16, 32) for x, y_offset in fire_positions]
     for fire in fires:
         fire.on()
 
     #saws are really 76px tall (38 doubled), -64 was sinking them 12px into the ground
-    saw_positions = [(600, -200), (1800, -450), (1830, -450), (3600, -76), (3630, -76), (4800, -700)]
+    saw_positions = [(600, -200), (1800, -194), (1830, -194), (3600, -76), (3630, -76), (4800, -450)]
     saws = [Saw(x, HEIGHT - block_size + y_offset, 38, 38) for x, y_offset in saw_positions]
     for saw in saws:
         saw.on()
@@ -1524,16 +1560,15 @@ def build_level2():
     trampoline_positions = [(850, -56), (2900, -100), (4100, -100)]
     trampolines = [Trampoline(x, HEIGHT - block_size + y_offset, 28, 28) for x, y_offset in trampoline_positions]
 
-    #the stairs used to climb up to height 8 (and the flat ledge sat at height 8 too),
-    #which is right at the top of the screen - since the camera doesn't scroll
-    #vertically you couldn't see yourself up there at all. capped everything at 7
+    #the screen is shorter now (640 instead of 800), so the stairs/ledge are capped
+    #at height 5 instead of 7 to stay comfortably on screen
     pillars = []
-    for i, h in enumerate([2, 3, 4, 5, 6, 7]):
+    for i, h in enumerate([2, 3, 4, 5]):
         pillars.append(Block((10 + i) * block_size, HEIGHT - block_size * h, block_size))
-    for i, h in enumerate([7, 6, 5, 4, 3, 2]):
-        pillars.append(Block((28 + i) * block_size, HEIGHT - block_size * h, block_size))
+    for i, h in enumerate([5, 4, 3, 2]):
+        pillars.append(Block((26 + i) * block_size, HEIGHT - block_size * h, block_size))
 
-    high_ledge = [Block(i * block_size, HEIGHT - block_size * 7, block_size) for i in range(16, 28)]
+    high_ledge = [Block(i * block_size, HEIGHT - block_size * 5, block_size) for i in range(14, 26)]
 
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 6) // block_size)]
@@ -1541,18 +1576,17 @@ def build_level2():
     checkpoint_positions = [(1500, -168), (4300, -168)]
     checkpoints = [Checkpoint(x, HEIGHT - block_size + y_offset, 200, 200) for x, y_offset in checkpoint_positions]
 
-    #coins along the stairs/ledge redone to match the height-7 cap above (they used
-    #to go up to height 9, which is now higher than the stairs even reach)
+    #coins along the stairs/ledge redone to match the height-5 cap above
     coins = [Coin(x, y) for x, y in [
-        (1000, HEIGHT - block_size * 3), (1200, HEIGHT - block_size * 5),
-        (1450, HEIGHT - block_size * 7), (2000, HEIGHT - block_size * 7),
-        (2550, HEIGHT - block_size * 7), (2850, HEIGHT - block_size * 5),
-        (3100, HEIGHT - block_size * 3), (4450, HEIGHT - block_size - 120),
+        (1080, HEIGHT - block_size * 3), (1280, HEIGHT - block_size * 5),
+        (1500, HEIGHT - block_size * 5), (1950, HEIGHT - block_size * 5),
+        (2400, HEIGHT - block_size * 5), (2650, HEIGHT - block_size * 4),
+        (2850, HEIGHT - block_size * 3), (4450, HEIGHT - block_size - 120),
         (5000, HEIGHT - block_size - 120)
     ]]
 
     enemies = [
-        AIEnemy(1900, HEIGHT - block_size * 7 - 64, 70, 64, patrol_range=300, aggro_range=250, speed=3),
+        AIEnemy(1900, HEIGHT - block_size * 5 - 64, 70, 64, patrol_range=300, aggro_range=250, speed=3),
         AIEnemy(2300, HEIGHT - block_size - 64, 70, 64, patrol_range=150, aggro_range=400, speed=4),
         AIEnemy(3800, HEIGHT - block_size - 64, 70, 64, patrol_range=180, aggro_range=450, speed=4),
         AIEnemy(5100, HEIGHT - block_size - 64, 70, 64, patrol_range=120, aggro_range=500, speed=4.5),
@@ -1649,14 +1683,13 @@ def build_level5():
     ]
     objects.extend(rockheads)
 
-    #simulated the actual jump-across-the-gap frame by frame against the ball's swing:
-    #these numbers give a real ~24 frame (0.4s) safe window every 1.3s where the ball
-    #is out of the way, so it's always beatable if you watch and time it, but it's
-    #actually in the way (y~584-600, right in a normal jump's path) the rest of the time
+    #re-simulated this against the shorter screen (floor moved from y=704 to y=544
+    #when the viewport shrank, so the old chain length would have hung the ball
+    #below the floor). still gives a real ~24 frame (0.4s) safe window every 1.3s
     spiked_balls = [
-        SpikedBall(12 * block_size, 100, chain_length=500, amplitude=0.25, speed=0.08, phase=0.0),
-        SpikedBall(43 * block_size, 100, chain_length=500, amplitude=0.25, speed=0.08, phase=2.0),
-        SpikedBall(79 * block_size, 100, chain_length=500, amplitude=0.25, speed=0.08, phase=4.0),
+        SpikedBall(12 * block_size, 100, chain_length=340, amplitude=0.3, speed=0.08, phase=0.0),
+        SpikedBall(43 * block_size, 100, chain_length=340, amplitude=0.3, speed=0.08, phase=2.0),
+        SpikedBall(79 * block_size, 100, chain_length=340, amplitude=0.3, speed=0.08, phase=4.0),
     ]
 
     boss = AIEnemy(111 * block_size, floor_top - 84, 90, 84,
@@ -1771,7 +1804,7 @@ def main(window):
             player_xs = [p.rect.centerx for p in players]
             for obj in objects:
                 if isinstance(obj, (Fire, Saw, Trampoline, Fan, RockHead)):
-                    if any(abs(obj.rect.centerx - x) < 700 for x in player_xs):
+                    if any(abs(obj.rect.centerx - x) < 550 for x in player_xs):
                         obj.loop()
             for ball in spiked_balls:
                 ball.loop()
@@ -1862,8 +1895,8 @@ def main(window):
 
 #level transition screens
 def show_level_complete_screen(window, level_num):
-    font = pygame.font.Font(None, 74)
-    small_font = pygame.font.Font(None, 40)
+    font = FONTS[74]
+    small_font = FONTS[40]
     start = time.time()
     while time.time() - start < 2.5:
         for event in pygame.event.get():
@@ -1878,8 +1911,8 @@ def show_level_complete_screen(window, level_num):
         pygame.display.update()
 
 def show_game_complete_screen(window):
-    font = pygame.font.Font(None, 74)
-    small_font = pygame.font.Font(None, 40)
+    font = FONTS[74]
+    small_font = FONTS[40]
     waiting = True
     while waiting:
         for event in pygame.event.get():
