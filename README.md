@@ -6,7 +6,9 @@ Started as a basic pygame platformer following along with a tutorial, then I kep
 
 ## Playing it
 
-**In browser:** grab `impossible platformer.zip` from this repo and upload it to itch.io (or any host that can serve a zipped HTML5 build) - it's already packaged for that, `index.html` and all. Set the viewport to 1000x800.
+**In browser, straight from this repo:** the `docs` folder has the same web build already unpacked, ready for GitHub Pages - turn it on under this repo's Settings -> Pages -> Source: "Deploy from a branch" -> Branch: `main`, folder: `/docs` -> Save. GitHub will give you the live link a minute or two later (usually `https://hidden-ghost-123.github.io/Impossible-Platformer/`).
+
+**In browser, via itch.io:** grab `impossible platformer.zip` from this repo and upload it to itch.io (or any host that takes a zipped HTML5 build) - it's already packaged for that, `index.html` and all. Set the viewport to 1000x800.
 
 **On your own machine:** you need Python and pygame installed.
 
