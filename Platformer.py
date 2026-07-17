@@ -1136,15 +1136,22 @@ class GoalFlag(Object):
         win.blit(self.image, (self.rect.x - offset_x, self.rect.y - offset_y))
 
 #The Background (Function)
+#the background tiles are only 64x64, so tiling them across the whole screen
+#every single frame was 238 separate blit calls a frame just for the background -
+#it never changes, so tile it onto one surface once up front and blit that one
+#surface instead. the padding is bigger than the screen shake ever moves things,
+#so shaking the camera never reveals a gap at the edge
+BG_PAD = 32
+
 def get_background(name):
-    image = pygame.image.load(join("assets", "Background", name))
-    _, _, width, height = image.get_rect()
-    tiles = []
-    for i in range(WIDTH // width + 2):
-        for j in range(HEIGHT // height + 2):
-            pos = (i * width, j * height)
-            tiles.append(pos)
-    return tiles, image
+    image = pygame.image.load(join("assets", "Background", name)).convert()
+    width, height = image.get_width(), image.get_height()
+    surf_w, surf_h = WIDTH + BG_PAD * 2, HEIGHT + BG_PAD * 2
+    bg_surface = pygame.Surface((surf_w, surf_h))
+    for x in range(0, surf_w, width):
+        for y in range(0, surf_h, height):
+            bg_surface.blit(image, (x, y))
+    return bg_surface
 
 #the HUD used to re-render all its text every single frame even though the
 #level/coin count/death count usually don't change frame to frame - only
@@ -1198,15 +1205,14 @@ def draw_message_banner(window, text):
     window.blit(_banner_cache["text_surf"], (WIDTH // 2 - _banner_cache["text_surf"].get_width() // 2, 90 + 13))
 
 #Background Drawing
-def draw(window, background, bg_image, players, objects, coins, enemies, spiked_balls,
+def draw(window, background, players, objects, coins, enemies, spiked_balls,
          checkpoints, goal, offset_x, offset_y, message=None, coins_this_level=0,
          coins_needed=0, total_coins=0):
     shake_x, shake_y = screen_shake.offset()
     ox = offset_x - shake_x
     oy = offset_y - shake_y
 
-    for tile in background:
-        window.blit(bg_image, (tile[0] + shake_x, tile[1] + shake_y))
+    window.blit(background, (-BG_PAD + shake_x, -BG_PAD + shake_y))
 
     for obj in objects:
         obj.draw(window, ox, oy)
@@ -1760,7 +1766,7 @@ def main(window):
     while level_index < len(LEVELS):
         current_level_num = level_index + 1
         level_data = LEVELS[level_index]()
-        background, bg_image = get_background(level_data['background'])
+        background = get_background(level_data['background'])
 
         objects = level_data['objects']
         coins = level_data['coins']
@@ -1882,7 +1888,7 @@ def main(window):
                     goal_message = (f"Not enough coins! Need {short} more "
                                      f"({coins_collected_this_level}/{coins_needed}) to move on")
 
-            draw(window, background, bg_image, players, visible + rockheads, coins,
+            draw(window, background, players, visible + rockheads, coins,
                  [e for e in enemies if e.alive], spiked_balls, checkpoints, goal, offset_x, offset_y,
                  message=goal_message, coins_this_level=coins_collected_this_level,
                  coins_needed=coins_needed, total_coins=total_coins_in_level)
