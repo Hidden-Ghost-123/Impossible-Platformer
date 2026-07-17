@@ -1260,20 +1260,43 @@ def collide(player, objects, dx):
 #count as solid too EXCEPT while dashing, when they get passed through unharmed
 SOLID_ALWAYS = (Block, Trampoline, Fan, Blk2)
 SOLID_WHEN_NOT_DASHING = (Spike, Saw, Fire, RockHead, Blk)
+SOLID_ALL = SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING  #built once instead of every call
 
-def update_player(player, objects, enemies, spiked_balls, fans, rockheads):
+#filtering "is this near the player" by scanning every single object in the level
+#was still costing a full pass over everything each frame (collision, animation,
+#AND drawing all did their own scan) - a level is thousands of pixels long, so
+#sort objects into fixed-width buckets by x position once when the level loads,
+#then each frame just look up the couple of buckets actually near the camera/player
+#instead of touching every object. rock heads move around so they're kept out of
+#the index and just always checked directly (there's only ever 2-3 of them)
+SPATIAL_BUCKET = 500
+
+def build_spatial_index(objects):
+    index = {}
+    for o in objects:
+        if isinstance(o, RockHead):
+            continue
+        b = o.rect.centerx // SPATIAL_BUCKET
+        index.setdefault(b, []).append(o)
+    return index
+
+def query_spatial(index, center_x, margin):
+    lo = int((center_x - margin) // SPATIAL_BUCKET)
+    hi = int((center_x + margin) // SPATIAL_BUCKET)
+    result = []
+    for b in range(lo, hi + 1):
+        bucket = index.get(b)
+        if bucket:
+            result.extend(bucket)
+    return result
+
+def update_player(player, nearby, enemies, spiked_balls, fans, rockheads):
     keys = pygame.key.get_pressed()
     c = player.controls
 
-    #checking every block in the whole level for collision every frame was the
-    #other big slowdown on the web build - levels are thousands of pixels long
-    #but the screen is only 1000 wide, so only bother with stuff near the player
-    px = player.rect.centerx
-    nearby = [o for o in objects if abs(o.rect.centerx - px) < 700]
-
     if player.ground_pounding:
         player.x_vel = 0
-        solids = [o for o in nearby if isinstance(o, SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING)]
+        solids = [o for o in nearby if isinstance(o, SOLID_ALL)]
         collide_left = collide_right = None
         vertical_collide = handle_vertical_collision(player, solids, player.y_vel)
 
@@ -1289,7 +1312,7 @@ def update_player(player, objects, enemies, spiked_balls, fans, rockheads):
 
     else:
         player.x_vel = 0
-        solids = [o for o in nearby if isinstance(o, SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING)]
+        solids = [o for o in nearby if isinstance(o, SOLID_ALL)]
         collide_left = collide(player, solids, -PLAYER_VEL * 2)
         collide_right = collide(player, solids, PLAYER_VEL * 2)
 
@@ -1749,6 +1772,7 @@ def main(window):
         goal = level_data['goal']
         player_start = level_data['player_start']
         default_respawn = level_data['respawn']
+        spatial_index = build_spatial_index(objects)
 
         checkpoint_pos = None
         players = [Player(player_start[0], player_start[1], 50, 50, char1, P1_CONTROLS)]
@@ -1806,13 +1830,16 @@ def main(window):
             particles.update()
             screen_shake.update()
 
-            #no point animating traps nobody is anywhere near - same idea as the
-            #collision culling, levels are way longer than the screen
-            player_xs = [p.rect.centerx for p in players]
-            for obj in objects:
-                if isinstance(obj, (Fire, Saw, Trampoline, Fan, RockHead)):
-                    if any(abs(obj.rect.centerx - x) < 700 for x in player_xs):
-                        obj.loop()
+            #one bucket lookup for "everything actually on screen right now" instead
+            #of scanning the whole level - reused for both animating traps and
+            #drawing, so it's one query a frame, not two
+            visible = query_spatial(spatial_index, offset_x + WIDTH // 2, WIDTH // 2 + 100)
+
+            for obj in visible:
+                if isinstance(obj, (Fire, Saw, Trampoline, Fan)):
+                    obj.loop()
+            for rh in rockheads:
+                rh.loop()
             for ball in spiked_balls:
                 ball.loop()
             for coin in coins:
@@ -1821,7 +1848,8 @@ def main(window):
                 enemy.loop(players)
 
             for p in players:
-                update_player(p, objects, enemies, spiked_balls, fans, rockheads)
+                nearby = query_spatial(spatial_index, p.rect.centerx, 700) + rockheads
+                update_player(p, nearby, enemies, spiked_balls, fans, rockheads)
 
             for coin in coins:
                 if not coin.collected:
@@ -1854,7 +1882,7 @@ def main(window):
                     goal_message = (f"Not enough coins! Need {short} more "
                                      f"({coins_collected_this_level}/{coins_needed}) to move on")
 
-            draw(window, background, bg_image, players, objects, coins,
+            draw(window, background, bg_image, players, visible + rockheads, coins,
                  [e for e in enemies if e.alive], spiked_balls, checkpoints, goal, offset_x, offset_y,
                  message=goal_message, coins_this_level=coins_collected_this_level,
                  coins_needed=coins_needed, total_coins=total_coins_in_level)
