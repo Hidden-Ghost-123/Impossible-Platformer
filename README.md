@@ -6,7 +6,7 @@ Started as a basic pygame platformer following along with a tutorial, then I kep
 
 ## Playing it
 
-**In browser:** grab `impossible platformer.zip` from this repo and upload it to itch.io (or any host that can serve a zipped HTML5 build) - it's already packaged for that, `index.html` and all. Set the viewport to 1000x800.
+**In browser:** grab `impossible platformer.zip` from this repo and upload it to itch.io (or any host that can serve a zipped HTML5 build) - it's already packaged for that, `index.html` and all. Set the viewport to 800x640.
 
 **On your own machine:** you need Python and pygame installed.
 
