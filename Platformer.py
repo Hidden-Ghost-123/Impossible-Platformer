@@ -61,6 +61,20 @@ small_block_size = 48
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 
 #particle system, just used for jump dust/dash trail/coin sparkle/hit effect
+#making a new tiny surface for every particle every frame was one of the big
+#slowdowns on the web build, so cache them by (size, color, alpha) instead -
+#most particles share the same handful of colors/sizes so this reuses a lot
+_particle_surface_cache = {}
+
+def _get_particle_surface(size, color, alpha):
+    key = (size, color, alpha)
+    surf = _particle_surface_cache.get(key)
+    if surf is None:
+        surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+        pygame.draw.circle(surf, (*color, alpha), (size, size), size)
+        _particle_surface_cache[key] = surf
+    return surf
+
 class Particle:
     def __init__(self, x, y, color, vx=None, vy=None, life=30, size=4):
         self.x = x
@@ -83,9 +97,8 @@ class Particle:
             return
         alpha_ratio = self.life / self.max_life
         size = max(1, int(self.size * alpha_ratio))
-        surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
-        color = (*self.color, int(255 * alpha_ratio))
-        pygame.draw.circle(surf, color, (size, size), size)
+        alpha = int(255 * alpha_ratio)
+        surf = _get_particle_surface(size, self.color, alpha)
         win.blit(surf, (self.x - offset_x - size, self.y - offset_y - size))
 
     def is_dead(self):
@@ -696,7 +709,11 @@ class Fire(Object):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
         self.image = sprites[sprite_index]
         self.animation_count += 1
-        self.mask = pygame.mask.from_surface(self.image)
+        #the frame only actually changes every ANIMATION_DELAY ticks, so only redo
+        #the (expensive) mask when it does instead of every single frame
+        if self.image is not getattr(self, "_mask_src", None):
+            self.mask = pygame.mask.from_surface(self.image)
+            self._mask_src = self.image
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
@@ -722,7 +739,9 @@ class Saw(Object):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
         self.image = sprites[sprite_index]
         self.animation_count += 1
-        self.mask = pygame.mask.from_surface(self.image)
+        if self.image is not getattr(self, "_mask_src", None):
+            self.mask = pygame.mask.from_surface(self.image)
+            self._mask_src = self.image
         if self.animation_count // self.ANIMATION_DELAY > len(sprites):
             self.animation_count = 0
 
@@ -787,7 +806,9 @@ class Trampoline(Object):
         sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
         self.image = sprites[sprite_index]
         self.animation_count += 1
-        self.mask = pygame.mask.from_surface(self.image)
+        if self.image is not getattr(self, "_mask_src", None):
+            self.mask = pygame.mask.from_surface(self.image)
+            self._mask_src = self.image
         if self.animation_name == "Jump" and self.animation_count // self.ANIMATION_DELAY >= len(sprites):
             self.reset()
 
@@ -816,7 +837,9 @@ class Fan(Object):
         index = (self.animation_count // self.ANIMATION_DELAY) % len(frames)
         self.image = frames[index]
         self.animation_count += 1
-        self.mask = pygame.mask.from_surface(self.image)
+        if self.image is not getattr(self, "_mask_src", None):
+            self.mask = pygame.mask.from_surface(self.image)
+            self._mask_src = self.image
 
     def blowing(self):
         return self.state == "on"
@@ -921,7 +944,9 @@ class RockHead(Object):
                 self.rect.y += int(self.speed * dy / dist)
             self.image = ROCK_IDLE[0]
 
-        self.mask = pygame.mask.from_surface(self.image)
+        if self.image is not getattr(self, "_mask_src", None):
+            self.mask = pygame.mask.from_surface(self.image)
+            self._mask_src = self.image
 
 #spiked ball on a chain, swings like a pendulum
 class SpikedBall(Object):
@@ -958,6 +983,19 @@ class SpikedBall(Object):
         win.blit(self.image, (cx - 28, cy - 28))
 
 #enemy that patrols, then chases and lunges at whichever player is closest
+#rescaling + remasking a sprite every single frame for every enemy was expensive,
+#and it's always the same handful of (frame, size) combos repeating, so cache them
+_enemy_scaled_cache = {}
+
+def _get_scaled_enemy_frame(frames, index, width, height):
+    key = (id(frames), index, width, height)
+    cached = _enemy_scaled_cache.get(key)
+    if cached is None:
+        img = pygame.transform.scale(frames[index], (width, height))
+        cached = (img, pygame.mask.from_surface(img))
+        _enemy_scaled_cache[key] = cached
+    return cached
+
 class AIEnemy(Object):
     PATROL, CHASE, LUNGE, STUNNED = "patrol", "chase", "lunge", "stunned"
     ANIMATION_DELAY = 5
@@ -1041,8 +1079,7 @@ class AIEnemy(Object):
 
         frames = SPIKEHEAD_BLINK if self.state in (self.PATROL, self.CHASE) else SPIKEHEAD_IDLE
         index = (self.animation_count // self.ANIMATION_DELAY) % len(frames)
-        self.image = pygame.transform.scale(frames[index], (self.width, self.height))
-        self.mask = pygame.mask.from_surface(self.image)
+        self.image, self.mask = _get_scaled_enemy_frame(frames, index, self.width, self.height)
 
     def draw(self, win, offset_x, offset_y):
         if not self.alive:
@@ -1167,15 +1204,16 @@ def handle_vertical_collision(player, objects, dy):
     return collided_objects
 
 def collide(player, objects, dx):
+    #this only nudges the player's rect sideways to test a spot, the sprite itself
+    #never changes, so there's no need to call update() and rebuild the mask twice
+    #(that was one of the expensive things happening every frame on the web build)
     player.move(dx, 0)
-    player.update()
     collided_object = None
     for obj in objects:
         if pygame.sprite.collide_mask(player, obj):
             collided_object = obj
             break
     player.move(-dx, 0)
-    player.update()
     return collided_object
 
 #things that the player can stand on / bump into. spike, saw, fire, rockhead and blk
@@ -1187,14 +1225,20 @@ def update_player(player, objects, enemies, spiked_balls, fans, rockheads):
     keys = pygame.key.get_pressed()
     c = player.controls
 
+    #checking every block in the whole level for collision every frame was the
+    #other big slowdown on the web build - levels are thousands of pixels long
+    #but the screen is only 1000 wide, so only bother with stuff near the player
+    px = player.rect.centerx
+    nearby = [o for o in objects if abs(o.rect.centerx - px) < 700]
+
     if player.ground_pounding:
         player.x_vel = 0
-        solids = [o for o in objects if isinstance(o, SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING)]
+        solids = [o for o in nearby if isinstance(o, SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING)]
         collide_left = collide_right = None
         vertical_collide = handle_vertical_collision(player, solids, player.y_vel)
 
     elif player.dashing:
-        solids = [o for o in objects if isinstance(o, SOLID_ALWAYS)]
+        solids = [o for o in nearby if isinstance(o, SOLID_ALWAYS)]
         collide_left = collide(player, solids, -PLAYER_VEL * 2)
         collide_right = collide(player, solids, PLAYER_VEL * 2)
         if collide_left and player.dash_dir < 0:
@@ -1205,7 +1249,7 @@ def update_player(player, objects, enemies, spiked_balls, fans, rockheads):
 
     else:
         player.x_vel = 0
-        solids = [o for o in objects if isinstance(o, SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING)]
+        solids = [o for o in nearby if isinstance(o, SOLID_ALWAYS + SOLID_WHEN_NOT_DASHING)]
         collide_left = collide(player, solids, -PLAYER_VEL * 2)
         collide_right = collide(player, solids, PLAYER_VEL * 2)
 
@@ -1722,9 +1766,13 @@ def main(window):
             particles.update()
             screen_shake.update()
 
+            #no point animating traps nobody is anywhere near - same idea as the
+            #collision culling, levels are way longer than the screen
+            player_xs = [p.rect.centerx for p in players]
             for obj in objects:
                 if isinstance(obj, (Fire, Saw, Trampoline, Fan, RockHead)):
-                    obj.loop()
+                    if any(abs(obj.rect.centerx - x) < 700 for x in player_xs):
+                        obj.loop()
             for ball in spiked_balls:
                 ball.loop()
             for coin in coins:
