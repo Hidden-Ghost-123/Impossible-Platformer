@@ -292,6 +292,10 @@ def auth_menu():
         login_text = small_font.render("2. Log In", True, (255, 255, 255))
         window.blit(login_text, (WIDTH // 2 - login_text.get_width() // 2, HEIGHT // 2 + 50))
 
+        hint_font = FONTS[26]
+        hint_text = hint_font.render("Press 1 or 2 on your keyboard to choose", True, (230, 230, 230))
+        window.blit(hint_text, (WIDTH // 2 - hint_text.get_width() // 2, HEIGHT // 2 + 110))
+
         pygame.display.update()
 
         for event in pygame.event.get():
